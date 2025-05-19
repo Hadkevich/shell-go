@@ -25,6 +25,8 @@ func main() {
 		switch {
 		case command == "exit":
 			handleExit(args)
+		case command == "echo":
+			fmt.Println(strings.Join(args, " "))
 		default:
 			fmt.Println(command + ": command not found")
 		}
