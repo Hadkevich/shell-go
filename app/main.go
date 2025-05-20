@@ -32,7 +32,7 @@ func main() {
 		case type_.String():
 			TypeCommand(args)
 		default:
-			if filePath, exists := findExecutable(command); exists {
+			if filePath, exists := findExecutable(command); exists == true {
 				cmd := exec.Command(command, args...)
 				cmd.Stdout = os.Stdout
 				cmd.Stderr = os.Stderr
@@ -40,6 +40,8 @@ func main() {
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "%s: command not found\n", cmd, filePath)
 				}
+			} else {
+				fmt.Println(command + ": command not found")
 			}
 		}
 	}
