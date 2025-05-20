@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -24,36 +25,38 @@ func main() {
 
 		switch command {
 		case exit.String():
-			handleExit(args)
+			ExitCommand(args)
 		case echo.String():
-			handleEcho(args)
+			EchoCommand(args)
 		case type_.String():
-			handleType(args)
+			TypeCommand(args)
 		default:
 			fmt.Println(command + ": command not found")
 		}
 	}
 }
 
-type builtin int
+type Command int
 
 const (
-	exit builtin = iota
+	exit Command = iota
 	echo
 	type_
 )
 
-var commandName = map[builtin]string{
+var commandName = map[Command]string{
 	exit:  "exit",
 	echo:  "echo",
 	type_: "type",
 }
 
-func (ss builtin) String() string {
+var builtIns = []string{"echo", "exit", "type"}
+
+func (ss Command) String() string {
 	return commandName[ss]
 }
 
-func handleExit(args []string) {
+func ExitCommand(args []string) {
 	exitCode, err := strconv.Atoi(args[0])
 
 	if err != nil {
@@ -64,19 +67,33 @@ func handleExit(args []string) {
 	os.Exit(exitCode)
 }
 
-func handleEcho(args []string) {
+func EchoCommand(args []string) {
 	fmt.Println(strings.Join(args, " "))
 }
 
-func handleType(args []string) {
-	switch args[0] {
-	case exit.String():
-		fmt.Println(args[0] + " is a shell builtin")
-	case echo.String():
-		fmt.Println(args[0] + " is a shell builtin")
-	case type_.String():
-		fmt.Println(args[0] + " is a shell builtin")
-	default:
-		fmt.Println(strings.Join(args, " ") + ": not found")
+func TypeCommand(args []string) {
+	value := args[0]
+
+	if slices.Contains(builtIns, value) {
+		fmt.Println(value + " is a shell builtin")
+		return
 	}
+
+	if file, exists := findBinInPath(value); exists {
+		fmt.Fprintf(os.Stdout, "%s is %s\n", value, file)
+		return
+	}
+
+	fmt.Println(value + ": not found")
+}
+
+func findBinInPath(bin string) (string, bool) {
+	paths := os.Getenv("PATH")
+	for _, path := range strings.Split(paths, ":") {
+		file := path + "/" + bin
+		if _, err := os.Stat(file); err == nil {
+			return file, true
+		}
+	}
+	return "", false
 }
