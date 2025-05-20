@@ -11,6 +11,7 @@ import (
 
 func main() {
 	for {
+		fmt.Fprint(os.Stdout, "$ ")
 		line, err := bufio.NewReader(os.Stdin).ReadString('\n')
 
 		if err != nil {
