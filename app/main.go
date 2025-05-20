@@ -62,6 +62,7 @@ var commandName = map[Command]string{
 	exit:  "exit",
 	echo:  "echo",
 	type_: "type",
+	pwd:   "pwd",
 }
 
 func (ss Command) String() string {
