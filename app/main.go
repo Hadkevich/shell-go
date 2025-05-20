@@ -31,6 +31,8 @@ func main() {
 			EchoCommand(args)
 		case type_.String():
 			TypeCommand(args)
+		case pwd.String():
+			pwdCommand(args)
 		default:
 			if filePath, exists := findExecutable(command); exists == true {
 				cmd := exec.Command(command, args...)
@@ -53,6 +55,7 @@ const (
 	exit Command = iota
 	echo
 	type_
+	pwd
 )
 
 var commandName = map[Command]string{
@@ -97,7 +100,7 @@ func TypeCommand(args []string) {
 }
 
 func isShellBuiltin(command string) bool {
-	builtIns := []string{"echo", "exit", "type"}
+	builtIns := []string{"echo", "exit", "type", "pwd"}
 	for _, b := range builtIns {
 		if b == command {
 			return true
@@ -115,4 +118,12 @@ func findExecutable(bin string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+func pwdCommand(args []string) {
+	dir, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error arg:", err)
+	}
+	fmt.Println(dir)
 }
