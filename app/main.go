@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"slices"
+	"os/exec"
 	"strconv"
 	"strings"
 )
@@ -12,16 +12,17 @@ import (
 func main() {
 	for {
 		fmt.Fprint(os.Stdout, "$ ")
-		userInput, err := bufio.NewReader(os.Stdin).ReadString('\n')
+		line, err := bufio.NewReader(os.Stdin).ReadString('\n')
 
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error reading input:", err)
 			os.Exit(1)
 		}
 
-		commands := strings.Split(userInput[:len(userInput)-1], " ")
-		command := commands[0]
-		args := commands[1:]
+		line = strings.TrimSpace(line)
+		parts := strings.Split(line, " ")
+		command := parts[0]
+		args := parts[1:]
 
 		switch command {
 		case exit.String():
@@ -31,7 +32,15 @@ func main() {
 		case type_.String():
 			TypeCommand(args)
 		default:
-			fmt.Println(command + ": command not found")
+			if filePath, exists := findExecutable(command); exists {
+				command := exec.Command(command, args...)
+				command.Stdout = os.Stdout
+				command.Stderr = os.Stderr
+				err := command.Run()
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "%s: command not found\n", command, filePath)
+				}
+			}
 		}
 	}
 }
@@ -49,8 +58,6 @@ var commandName = map[Command]string{
 	echo:  "echo",
 	type_: "type",
 }
-
-var builtIns = []string{"echo", "exit", "type"}
 
 func (ss Command) String() string {
 	return commandName[ss]
@@ -74,12 +81,12 @@ func EchoCommand(args []string) {
 func TypeCommand(args []string) {
 	value := args[0]
 
-	if slices.Contains(builtIns, value) {
+	if isShellBuiltin(value) {
 		fmt.Println(value + " is a shell builtin")
 		return
 	}
 
-	if file, exists := findBinInPath(value); exists {
+	if file, exists := findExecutable(value); exists {
 		fmt.Fprintf(os.Stdout, "%s is %s\n", value, file)
 		return
 	}
@@ -87,7 +94,17 @@ func TypeCommand(args []string) {
 	fmt.Println(value + ": not found")
 }
 
-func findBinInPath(bin string) (string, bool) {
+func isShellBuiltin(command string) bool {
+	builtIns := []string{"echo", "exit", "type"}
+	for _, b := range builtIns {
+		if b == command {
+			return true
+		}
+	}
+	return false
+}
+
+func findExecutable(bin string) (string, bool) {
 	paths := os.Getenv("PATH")
 	for _, path := range strings.Split(paths, ":") {
 		file := path + "/" + bin
