@@ -135,8 +135,17 @@ func pwdCommand() {
 
 func cdCommand(args []string) {
 	path := strings.Join(args, " ")
+
 	if len(path) == 0 {
 		pwdCommand()
+		return
+	}
+
+	if strings.Compare(path, "~") == 0 {
+		homeDir, error := os.UserHomeDir()
+		if error == nil {
+			os.Chdir(homeDir)
+		}
 		return
 	}
 
