@@ -142,7 +142,7 @@ func cdCommand(args []string) {
 
 	stat, err := os.Stat(path)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "cd: %s No such file or directory\n", path)
+		fmt.Fprintf(os.Stderr, "cd: %s: No such file or directory\n", path)
 		return
 	}
 
