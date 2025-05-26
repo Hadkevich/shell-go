@@ -162,16 +162,26 @@ func cdCommand(args []string) {
 
 func splitByQuotes(line string) []string {
 	line = strings.TrimSpace(line)
-	re := regexp.MustCompile("\\w+|'([^']*)'")
+	re := regexp.MustCompile(`'[^']*'|[^\s']+`)
 
-	parts := re.FindAllStringSubmatch(line, -1)
+	matches := re.FindAllString(line, -1)
+
 	var result []string
-	for _, match := range parts {
-		if match[1] != "" {
-			result = append(result, match[1])
+	var current string
+	for _, m := range matches {
+		if m[0] == '\'' && m[len(m)-1] == '\'' {
+			current += m[1 : len(m)-1]
 		} else {
-			result = append(result, match[0])
+			if current != "" {
+				result = append(result, current)
+				current = ""
+			}
+			result = append(result, m)
 		}
+	}
+
+	if current != "" {
+		result = append(result, current)
 	}
 	return result
 }
