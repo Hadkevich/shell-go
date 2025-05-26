@@ -32,7 +32,9 @@ func main() {
 		case type_.String():
 			TypeCommand(args)
 		case pwd.String():
-			pwdCommand(args)
+			pwdCommand()
+		case cd.String():
+			cdCommand(args)
 		default:
 			if filePath, exists := findExecutable(command); exists == true {
 				cmd := exec.Command(command, args...)
@@ -56,6 +58,7 @@ const (
 	echo
 	type_
 	pwd
+	cd
 )
 
 var commandName = map[Command]string{
@@ -63,6 +66,7 @@ var commandName = map[Command]string{
 	echo:  "echo",
 	type_: "type",
 	pwd:   "pwd",
+	cd:    "cd",
 }
 
 func (ss Command) String() string {
@@ -121,10 +125,28 @@ func findExecutable(bin string) (string, bool) {
 	return "", false
 }
 
-func pwdCommand(args []string) {
+func pwdCommand() {
 	dir, err := os.Getwd()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error arg:", err)
 	}
 	fmt.Println(dir)
+}
+
+func cdCommand(args []string) {
+	path := strings.Join(args, " ")
+	if len(path) == 0 {
+		pwdCommand()
+		return
+	}
+
+	stat, err := os.Stat(path)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "No such file or directory")
+		return
+	}
+
+	if stat.IsDir() {
+		os.Chdir(path)
+	}
 }
