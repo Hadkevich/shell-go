@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -19,8 +20,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		line = strings.TrimSpace(line)
-		parts := strings.Split(line, " ")
+		parts := splitByQuotes(line)
 		command := parts[0]
 		args := parts[1:]
 
@@ -36,7 +36,7 @@ func main() {
 		case cd.String():
 			cdCommand(args)
 		default:
-			if filePath, exists := findExecutable(command); exists == true {
+			if filePath, exists := findExecutable(command); exists {
 				cmd := exec.Command(command, args...)
 				cmd.Stdout = os.Stdout
 				cmd.Stderr = os.Stderr
@@ -158,4 +158,20 @@ func cdCommand(args []string) {
 	if stat.IsDir() {
 		os.Chdir(path)
 	}
+}
+
+func splitByQuotes(line string) []string {
+	line = strings.TrimSpace(line)
+	re := regexp.MustCompile("\\w+|'([^']*)'")
+
+	parts := re.FindAllStringSubmatch(line, -1)
+	var result []string
+	for _, match := range parts {
+		if match[1] != "" {
+			result = append(result, match[1])
+		} else {
+			result = append(result, match[0])
+		}
+	}
+	return result
 }
