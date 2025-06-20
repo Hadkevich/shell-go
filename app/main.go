@@ -19,8 +19,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		line = strings.TrimSpace(line)
-		parts := strings.Split(line, " ")
+		parts := splitByQuotes(strings.TrimRight(line, "\n"))
 		command := parts[0]
 		args := parts[1:]
 
@@ -36,7 +35,7 @@ func main() {
 		case cd.String():
 			cdCommand(args)
 		default:
-			if filePath, exists := findExecutable(command); exists == true {
+			if filePath, exists := findExecutable(command); exists {
 				cmd := exec.Command(command, args...)
 				cmd.Stdout = os.Stdout
 				cmd.Stderr = os.Stderr
@@ -158,4 +157,27 @@ func cdCommand(args []string) {
 	if stat.IsDir() {
 		os.Chdir(path)
 	}
+}
+
+func splitByQuotes(s string) []string {
+	var result []string
+	var current string
+	inQuote := false
+
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\'' {
+			inQuote = !inQuote
+		} else if s[i] == ' ' && !inQuote {
+			if current != "" {
+				result = append(result, current)
+				current = ""
+			}
+		} else {
+			current += string(s[i])
+		}
+	}
+	if current != "" {
+		result = append(result, current)
+	}
+	return result
 }
