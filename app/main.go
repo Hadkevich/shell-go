@@ -9,11 +9,16 @@ import (
 	"strings"
 )
 
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
+}
+
 func main() {
 	for {
-		fmt.Fprint(os.Stdout, "$ ")
+		fmt.Print("$ ")
 		line, err := bufio.NewReader(os.Stdin).ReadString('\n')
-
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error reading input:", err)
 			os.Exit(1)
@@ -22,12 +27,22 @@ func main() {
 		parts := splitByQuotes(strings.TrimRight(line, "\n"))
 		command := parts[0]
 		args := parts[1:]
+		var output *os.File
+
+		for i, arg := range args {
+			if (arg == ">" || arg == "1>") && i < len(args)-1 {
+				output, err = os.Create(args[i+1])
+				check(err)
+				args = args[:i]
+				break
+			}
+		}
 
 		switch command {
 		case exit.String():
 			ExitCommand(args)
 		case echo.String():
-			EchoCommand(args)
+			EchoCommand(args, output)
 		case type_.String():
 			TypeCommand(args)
 		case pwd.String():
@@ -35,14 +50,20 @@ func main() {
 		case cd.String():
 			cdCommand(args)
 		default:
-			if filePath, exists := findExecutable(command); exists {
+			filePath, exists := findExecutable(command)
+
+			if exists && filePath != "" {
 				cmd := exec.Command(command, args...)
 				cmd.Stdout = os.Stdout
 				cmd.Stderr = os.Stderr
-				err := cmd.Run()
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "%s: command not found\n", cmd, filePath)
+
+				if output != nil {
+					defer output.Close()
+					cmd.Stdout = output
 				}
+
+				cmd.Run()
+
 			} else {
 				fmt.Println(command + ": command not found")
 			}
@@ -83,8 +104,14 @@ func ExitCommand(args []string) {
 	os.Exit(exitCode)
 }
 
-func EchoCommand(args []string) {
-	fmt.Println(strings.Join(args, " "))
+func EchoCommand(args []string, output *os.File) {
+	str := strings.Join(args, " ")
+	if output != nil {
+		defer output.Close()
+		output.WriteString(str + "\n")
+	} else {
+		fmt.Println(str)
+	}
 }
 
 func TypeCommand(args []string) {
