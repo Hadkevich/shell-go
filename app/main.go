@@ -162,12 +162,27 @@ func cdCommand(args []string) {
 func splitByQuotes(s string) []string {
 	var result []string
 	var current string
-	inQuote := false
+	inQuote, inDoubleQuote, escapeNext := false, false, false
 
 	for i := 0; i < len(s); i++ {
-		if s[i] == '\'' {
+		if escapeNext && inDoubleQuote {
+			if s[i] == '$' || s[i] == '"' || s[i] == '\\' {
+				current += string(s[i])
+			} else {
+				current += "\\"
+				current += string(s[i])
+			}
+			escapeNext = !escapeNext
+		} else if escapeNext {
+			current += string(s[i])
+			escapeNext = !escapeNext
+		} else if s[i] == '\'' && !inDoubleQuote {
 			inQuote = !inQuote
-		} else if s[i] == ' ' && !inQuote {
+		} else if s[i] == '\\' && !inQuote {
+			escapeNext = !escapeNext
+		} else if s[i] == '"' && !inQuote {
+			inDoubleQuote = !inDoubleQuote
+		} else if s[i] == ' ' && !inQuote && !inDoubleQuote {
 			if current != "" {
 				result = append(result, current)
 				current = ""
