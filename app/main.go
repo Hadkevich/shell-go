@@ -5,19 +5,27 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"slices"
 	"strconv"
 	"strings"
 )
 
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
+const (
+	execMod = 0666
+)
+
+var (
+	STDOUT           = os.Stdout
+	STDERR           = os.Stderr
+	shellCommands    = []string{"type", "echo", "exit", "pwd", "cd"}
+	stdOutCmds       = []string{">", "1>", "2>"}
+	stdAppendOutCmds = []string{">>", "1>>"}
+)
 
 func main() {
 	for {
 		fmt.Print("$ ")
+		STDOUT = os.Stdout
 		line, err := bufio.NewReader(os.Stdin).ReadString('\n')
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error reading input:", err)
@@ -27,57 +35,52 @@ func main() {
 		parts := splitByQuotes(strings.TrimRight(line, "\n"))
 		command := parts[0]
 		args := parts[1:]
-		var output *os.File
-		var outputErr *os.File
 
-		for i, arg := range args {
-			if i < len(args)-1 {
-				if arg == ">" || arg == "1>" {
-					output, err = os.Create(args[i+1])
-					check(err)
-					defer output.Close()
-					args = args[:i]
-					break
+		if len(args) >= 3 {
+			redirPos := len(args) - 2
+			redirFile := args[len(args)-1]
+
+			if slices.Contains(stdOutCmds, args[redirPos]) {
+				openFlag := os.O_CREATE | os.O_WRONLY | os.O_TRUNC // learn about all in this line
+				switch args[redirPos] {
+				case "1>", ">":
+					STDOUT, _ = os.OpenFile(redirFile, openFlag, execMod)
+				case "2>":
+					STDERR, _ = os.OpenFile(redirFile, openFlag, execMod)
 				}
-				if arg == "2>" {
-					outputErr, err = os.Create(args[i+1])
-					check(err)
-					defer outputErr.Close()
-					args = args[:i]
-					break
+				args = args[:redirPos]
+			} else if slices.Contains(stdAppendOutCmds, args[redirPos]) {
+				openFlag := os.O_CREATE | os.O_WRONLY | os.O_APPEND // Use append flag
+				switch args[redirPos] {
+				case "1>>", ">>":
+					STDOUT, _ = os.OpenFile(redirFile, openFlag, execMod)
+				case "2>>":
+					STDERR, _ = os.OpenFile(redirFile, openFlag, execMod)
 				}
+				args = args[:redirPos]
 			}
 		}
 
 		switch command {
-		case exit.String():
-			ExitCommand(args)
-		case echo.String():
-			EchoCommand(args, output)
-		case type_.String():
-			TypeCommand(args)
-		case pwd.String():
+		case "exit":
+			exitCommand(args)
+		case "echo":
+			echoCommand(args, STDOUT)
+		case "type":
+			typeCommand(args)
+		case "pwd":
 			pwdCommand()
-		case cd.String():
+		case "cd":
 			cdCommand(args)
 		default:
 			filePath, exists := findExecutable(command)
 
 			if exists && filePath != "" {
 				cmd := exec.Command(command, args...)
-				cmd.Stdout = os.Stdout
-				cmd.Stderr = os.Stderr
-
-				if output != nil {
-					cmd.Stdout = output
-				}
-
-				if outputErr != nil {
-					cmd.Stderr = outputErr
-				}
+				cmd.Stdout = STDOUT
+				cmd.Stderr = STDERR
 
 				cmd.Run()
-
 			} else {
 				fmt.Println(command + ": command not found")
 			}
@@ -85,29 +88,7 @@ func main() {
 	}
 }
 
-type Command int
-
-const (
-	exit Command = iota
-	echo
-	type_
-	pwd
-	cd
-)
-
-var commandName = map[Command]string{
-	exit:  "exit",
-	echo:  "echo",
-	type_: "type",
-	pwd:   "pwd",
-	cd:    "cd",
-}
-
-func (ss Command) String() string {
-	return commandName[ss]
-}
-
-func ExitCommand(args []string) {
+func exitCommand(args []string) {
 	exitCode, err := strconv.Atoi(args[0])
 
 	if err != nil {
@@ -118,7 +99,7 @@ func ExitCommand(args []string) {
 	os.Exit(exitCode)
 }
 
-func EchoCommand(args []string, output *os.File) {
+func echoCommand(args []string, output *os.File) {
 	str := strings.Join(args, " ")
 	if output != nil {
 		output.WriteString(str + "\n")
@@ -127,7 +108,7 @@ func EchoCommand(args []string, output *os.File) {
 	}
 }
 
-func TypeCommand(args []string) {
+func typeCommand(args []string) {
 	value := args[0]
 
 	if isShellBuiltin(value) {
@@ -144,13 +125,7 @@ func TypeCommand(args []string) {
 }
 
 func isShellBuiltin(command string) bool {
-	builtIns := []string{"echo", "exit", "type", "pwd"}
-	for _, b := range builtIns {
-		if b == command {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(shellCommands, command)
 }
 
 func findExecutable(bin string) (string, bool) {
