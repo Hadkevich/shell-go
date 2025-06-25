@@ -19,13 +19,14 @@ var (
 	STDERR           = os.Stderr
 	shellCommands    = []string{"type", "echo", "exit", "pwd", "cd"}
 	stdOutCmds       = []string{">", "1>", "2>"}
-	stdAppendOutCmds = []string{">>", "1>>"}
+	stdAppendOutCmds = []string{">>", "1>>", "2>>"}
 )
 
 func main() {
 	for {
 		fmt.Print("$ ")
 		STDOUT = os.Stdout
+		STDERR = os.Stderr
 		line, err := bufio.NewReader(os.Stdin).ReadString('\n')
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error reading input:", err)
@@ -39,7 +40,6 @@ func main() {
 		if len(args) >= 3 {
 			redirPos := len(args) - 2
 			redirFile := args[len(args)-1]
-
 			if slices.Contains(stdOutCmds, args[redirPos]) {
 				openFlag := os.O_CREATE | os.O_WRONLY | os.O_TRUNC // learn about all in this line
 				switch args[redirPos] {
