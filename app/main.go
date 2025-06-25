@@ -28,13 +28,24 @@ func main() {
 		command := parts[0]
 		args := parts[1:]
 		var output *os.File
+		var outputErr *os.File
 
 		for i, arg := range args {
-			if (arg == ">" || arg == "1>") && i < len(args)-1 {
-				output, err = os.Create(args[i+1])
-				check(err)
-				args = args[:i]
-				break
+			if i < len(args)-1 {
+				if arg == ">" || arg == "1>" {
+					output, err = os.Create(args[i+1])
+					check(err)
+					defer output.Close()
+					args = args[:i]
+					break
+				}
+				if arg == "2>" {
+					outputErr, err = os.Create(args[i+1])
+					check(err)
+					defer outputErr.Close()
+					args = args[:i]
+					break
+				}
 			}
 		}
 
@@ -58,8 +69,11 @@ func main() {
 				cmd.Stderr = os.Stderr
 
 				if output != nil {
-					defer output.Close()
 					cmd.Stdout = output
+				}
+
+				if outputErr != nil {
+					cmd.Stderr = outputErr
 				}
 
 				cmd.Run()
@@ -107,7 +121,6 @@ func ExitCommand(args []string) {
 func EchoCommand(args []string, output *os.File) {
 	str := strings.Join(args, " ")
 	if output != nil {
-		defer output.Close()
 		output.WriteString(str + "\n")
 	} else {
 		fmt.Println(str)
