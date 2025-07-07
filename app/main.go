@@ -12,8 +12,22 @@ import (
 )
 
 const (
-	execMod = 0666
+	execMod       = 0666
+	TERMINAL_BELL = "\x07"
 )
+
+type bellCompleter struct {
+	completer readline.AutoCompleter
+}
+
+func (c *bellCompleter) Do(line []rune, pos int) ([][]rune, int) {
+	completions, length := c.completer.Do(line, pos)
+	if len(completions) == 0 {
+		fmt.Print(TERMINAL_BELL)
+	}
+
+	return completions, length
+}
 
 var (
 	STDOUT           = os.Stdout
@@ -29,8 +43,10 @@ var (
 
 func main() {
 	l, err := readline.NewEx(&readline.Config{
-		Prompt:       "$ ",
-		AutoComplete: completer,
+		Prompt: "$ ",
+		AutoComplete: &bellCompleter{
+			completer: completer,
+		},
 	})
 
 	if err != nil {
