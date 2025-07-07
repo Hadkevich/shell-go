@@ -1,13 +1,14 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/chzyer/readline"
 )
 
 const (
@@ -20,18 +21,36 @@ var (
 	shellCommands    = []string{"type", "echo", "exit", "pwd", "cd"}
 	stdOutCmds       = []string{">", "1>", "2>"}
 	stdAppendOutCmds = []string{">>", "1>>", "2>>"}
+	completer        = readline.NewPrefixCompleter(
+		readline.PcItem("exit"),
+		readline.PcItem("echo"),
+	)
 )
 
 func main() {
+	l, err := readline.NewEx(&readline.Config{
+		Prompt:       "$ ",
+		AutoComplete: completer,
+	})
+
+	if err != nil {
+		panic(err)
+	}
+	defer l.Close()
+
 	for {
 		fmt.Print("$ ")
-		STDOUT = os.Stdout
-		STDERR = os.Stderr
-		line, err := bufio.NewReader(os.Stdin).ReadString('\n')
+
+		line, err := l.Readline()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error reading input:", err)
 			os.Exit(1)
 		}
+
+		line = strings.TrimSpace(line)
+
+		STDOUT = os.Stdout
+		STDERR = os.Stderr
 
 		parts := splitByQuotes(strings.TrimRight(line, "\n"))
 		command := parts[0]
